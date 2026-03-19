@@ -1,0 +1,208 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-title">
+        <h1>Настройки системы</h1>
+        <p>Управление персоналом, правами доступа и конфигурацией клуба</p>
+    </div>
+    <div class="page-actions">
+        <button class="btn btn-primary" onclick="openModal('addStaffModal')">
+            <i class="fas fa-user-shield"></i> Добавить сотрудника
+        </button>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 3fr 1fr; gap: 30px; align-items: start;">
+
+    <div class="card">
+        <div style="margin-bottom: 20px;">
+            <h3 style="font-size: 18px; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-users-cog" style="color: var(--primary);"></i>
+                Штатное расписание и доступ
+            </h3>
+        </div>
+
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Сотрудник</th>
+                        <th>Логин</th>
+                        <th>Роль / Уровень доступа</th>
+                        <th style="text-align: right;">Действие</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in staff %}
+                    <tr>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div style="width: 35px; height: 35px; background: #f1f5f9; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--primary); font-weight: bold;">
+                                    {{ s.full_name[0] }}
+                                </div>
+                                <div>
+                                    <div style="font-weight: 600;">{{ s.full_name }}</div>
+                                    <div style="font-size: 11px; color: var(--text-muted);">ID: #100{{ s.id_staff }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td style="font-family: monospace; color: var(--text-muted);">@{{ s.login }}</td>
+                        <td>
+                            {% if s.id_role == 1 %}
+                                <span class="badge" style="background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca;">
+                                    <i class="fas fa-crown"></i> Администратор
+                                </span>
+                            {% elif s.id_role == 2 %}
+                                <span class="badge" style="background: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe;">
+                                    <i class="fas fa-dumbbell"></i> Тренер
+                                </span>
+                            {% else %}
+                                <span class="badge" style="background: #f1f5f9; color: #475569;">Менеджер</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: right;">
+                            <button class="btn btn-outline" style="padding: 6px 12px;"
+                                    onclick="openEditStaff('{{ s.id_staff }}', '{{ s.full_name }}', '{{ s.login }}', '{{ s.id_role }}')">
+                                <i class="fas fa-sliders-h"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+        <div class="card" style="background: var(--sidebar-bg); color: white;">
+            <h4 style="margin-bottom: 15px; color: var(--primary);"><i class="fas fa-info-circle"></i> Справка</h4>
+            <ul style="font-size: 13px; padding-left: 18px; line-height: 1.6; color: #94a3b8;">
+                <li><b>Администратор:</b> Полный доступ, отчеты, управление финансами.</li>
+                <li><b>Тренер:</b> Просмотр расписания, отметка визитов, скрытые контакты.</li>
+                <li><b>Менеджер:</b> Регистрация клиентов и продажа абонементов.</li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <h4 style="margin-bottom: 10px;">Системная информация</h4>
+            <div style="font-size: 13px; color: var(--text-muted);">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span>Версия ядра:</span> <b>3.4.0-stable</b>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span>База данных:</span> <b style="color: var(--accent);">MySQL Online</b>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span>Лицензия:</span> <b>Unlimited</b>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="addStaffModal" class="modal-overlay">
+    <div class="modal-window">
+        <div class="modal-header">
+            <h3>Регистрация сотрудника</h3>
+            <button class="modal-close" onclick="closeModal('addStaffModal')"><i class="fas fa-times"></i></button>
+        </div>
+        <form action="/staff/add" method="POST">
+            <div class="form-group">
+                <label class="form-label">ФИО сотрудника</label>
+                <input type="text" name="name" class="form-control" placeholder="Константинопольский К.К." required>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="form-group">
+                    <label class="form-label">Логин (для входа)</label>
+                    <input type="text" name="login" class="form-control" placeholder="user_prime" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Пароль</label>
+                    <input type="password" name="password" class="form-control" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Назначить роль</label>
+                <select name="role_id" class="form-control">
+                    {% for r in roles %}
+                    <option value="{{ r.id_role }}">{{ r.role_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 15px;">Создать аккаунт</button>
+        </form>
+    </div>
+</div>
+
+<div id="editStaffModal" class="modal-overlay">
+    <div class="modal-window">
+        <div class="modal-header">
+            <h3>Параметры доступа</h3>
+            <button class="modal-close" onclick="closeModal('editStaffModal')"><i class="fas fa-times"></i></button>
+        </div>
+        <form id="editStaffForm" action="" method="POST">
+            <input type="hidden" name="staff_id" id="edit_staff_id">
+
+            <div class="form-group">
+                <label class="form-label">ФИО сотрудника</label>
+                <input type="text" name="name" id="edit_staff_name" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Логин системы</label>
+                <input type="text" name="login" id="edit_staff_login" class="form-control" required>
+            </div>
+
+            <div class="form-group" id="role_select_container">
+                <label class="form-label">Роль в системе</label>
+                <select name="role_id" id="edit_staff_role" class="form-control">
+                    {% for r in roles %}
+                    <option value="{{ r.id_role }}">{{ r.role_name }}</option>
+                    {% endfor %}
+                </select>
+                <p id="admin_warning" style="display: none; color: var(--danger); font-size: 11px; margin-top: 5px;">
+                    <i class="fas fa-exclamation-triangle"></i> Вы не можете изменить свою роль администратора.
+                </p>
+            </div>
+
+            <div style="background: #fff4e5; padding: 12px; border-radius: 8px; border: 1px solid #ffe7cc; margin-top: 20px;">
+                <p style="font-size: 12px; color: #854d0e;">
+                    <i class="fas fa-key"></i> Оставьте поле пароля пустым, если не хотите его менять.
+                </p>
+                <input type="password" name="new_password" class="form-control" placeholder="Новый пароль (опционально)" style="margin-bottom: 0; margin-top: 10px;">
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 25px;">
+                <button type="submit" class="btn btn-primary" style="flex: 2;">Применить</button>
+                <button type="button" class="btn btn-outline" style="flex: 1;" onclick="closeModal('editStaffModal')">Отмена</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openEditStaff(id, name, login, roleId) {
+        document.getElementById('editStaffForm').action = '/staff/save';
+        document.getElementById('edit_staff_id').value = id;
+        document.getElementById('edit_staff_name').value = name;
+        document.getElementById('edit_staff_login').value = login;
+        document.getElementById('edit_staff_role').value = roleId;
+
+        // Защита: если редактируем сами себя (ID из сессии передать в JS)
+        const currentUserId = "{{ session['user_id'] }}";
+        const warning = document.getElementById('admin_warning');
+        const roleSelect = document.getElementById('edit_staff_role');
+
+        if (id === currentUserId) {
+            roleSelect.disabled = true;
+            warning.style.display = 'block';
+        } else {
+            roleSelect.disabled = false;
+            warning.style.display = 'none';
+        }
+
+        openModal('editStaffModal');
+    }
+</script>
+{% endblock %}

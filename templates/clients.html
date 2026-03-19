@@ -1,0 +1,249 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-title">
+        <h1>Управление клиентами</h1>
+        <p>Всего в базе: <b>{{ clients|length }}</b> записей</p>
+    </div>
+
+    {% if current_role == 1 %}
+    <div class="page-actions">
+        <button class="btn btn-primary" onclick="openModal('addClientModal')">
+            <i class="fas fa-user-plus"></i> Добавить клиента
+        </button>
+    </div>
+    {% endif %}
+</div>
+
+<div class="card" style="margin-bottom: 20px; padding: 15px 25px;">
+    <form method="GET" action="/clients" id="filterForm" style="display: flex; gap: 15px; align-items: flex-end;">
+        <div style="flex: 2;">
+            <label class="form-label">Поиск по ФИО или Телефону</label>
+            <div style="position: relative;">
+                <i class="fas fa-search" style="position: absolute; left: 15px; top: 15px; color: var(--text-muted);"></i>
+                <input type="text" name="search" class="form-control"
+                       placeholder="Начните вводить имя или номер..."
+                       value="{{ request.args.get('search', '') }}"
+                       style="padding-left: 45px;">
+            </div>
+        </div>
+
+        <div style="flex: 1;">
+            <label class="form-label">Сортировка</label>
+            <select name="sort" class="form-control" onchange="document.getElementById('filterForm').submit()">
+                <option value="newest" {% if request.args.get('sort') == 'newest' %}selected{% endif %}>Сначала новые</option>
+                <option value="name_asc" {% if request.args.get('sort') == 'name_asc' %}selected{% endif %}>Имя (А-Я)</option>
+                <option value="name_desc" {% if request.args.get('sort') == 'name_desc' %}selected{% endif %}>Имя (Я-А)</option>
+            </select>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+            <button type="submit" class="btn btn-primary">Применить</button>
+            <a href="/clients" class="btn btn-outline" title="Сбросить фильтры">
+                <i class="fas fa-sync-alt"></i>
+            </a>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>ФИО Клиента</th>
+                    <th>Телефон</th>
+                    <th>Действующий абонемент</th>
+                    <th>Остаток занятий</th>
+                    <th style="text-align: right;">Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if clients %}
+                    {% for client in clients %}
+                    <tr>
+                        <td style="color: var(--text-muted); font-weight: 600;">#{{ client.id_client }}</td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div style="width: 35px; height: 35px; background: #e2e8f0; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #475569; font-weight: 700;">
+                                    {{ client.full_name[0] }}
+                                </div>
+                                <b>{{ client.full_name }}</b>
+                            </div>
+                        </td>
+                        <td style="font-family: 'Courier New', Courier, monospace; letter-spacing: 0.5px;">
+                            {{ client.phone }}
+                        </td>
+                        <td>
+                            {% if client.sub_name %}
+                                <span class="badge" style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-size: 11px;">
+                                    <i class="fas fa-check-circle"></i> {{ client.sub_name }}
+                                </span>
+                            {% else %}
+                                <span style="color: var(--text-muted); font-style: italic; font-size: 12px;">Нет подписки</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if client.remaining_visits is not none %}
+                                {% if client.remaining_visits >= 999 %}
+                                    <span class="badge badge-unlimited">Безлимит</span>
+                                {% elif client.remaining_visits <= 3 %}
+                                    <span class="badge badge-danger">{{ client.remaining_visits }} ост.</span>
+                                {% else %}
+                                    <span class="badge" style="background: #f1f5f9; color: #475569;">{{ client.remaining_visits }} шт.</span>
+                                {% endif %}
+                            {% else %}
+                                <span style="color: #cbd5e1;">—</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: right;">
+    <div style="display: flex; justify-content: flex-end; gap: 8px;">
+
+        {% if current_role == 1 %}
+            <button class="btn btn-outline" style="padding: 8px 10px;"
+                    onclick="openEditModal('{{ client.id_client }}', '{{ client.full_name }}', '{{ client.phone }}', '{{ client.birth_date }}')"
+                    title="Редактировать">
+                <i class="fas fa-edit"></i>
+            </button>
+
+            <a href="/subscriptions?search={{ client.full_name }}" class="btn btn-outline"
+               style="padding: 8px 10px; color: var(--accent); border-color: #dcfce7;" title="Оформить продажу">
+                <i class="fas fa-shopping-cart"></i>
+            </a>
+
+            <button class="btn btn-outline"
+                    style="padding: 8px 10px; color: var(--danger); border-color: #fee2e2;"
+                    onclick="confirmClientDelete('{{ client.id_client }}', '{{ client.full_name }}')"
+                    title="Удалить клиента">
+                <i class="fas fa-trash-alt"></i>
+            </button>
+        {% else %}
+            <span class="badge" style="background: #f8fafc; color: var(--text-muted); border: 1px solid var(--border);">
+                <i class="fas fa-lock"></i> Только просмотр
+            </span>
+        {% endif %}
+
+    </div>
+</td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 50px; color: var(--text-muted);">
+                        <i class="fas fa-search" style="font-size: 40px; margin-bottom: 15px; display: block; opacity: 0.3;"></i>
+                        Клиенты не найдены.
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="addClientModal" class="modal-overlay">
+    <div class="modal-window">
+        <div class="modal-header">
+            <h3>Регистрация нового клиента</h3>
+            <button class="modal-close" onclick="closeModal('addClientModal')"><i class="fas fa-times"></i></button>
+        </div>
+        <form action="/client/add" method="POST">
+            <div class="form-group">
+                <label class="form-label">Фамилия Имя Отчество</label>
+                <input type="text" name="name" class="form-control" placeholder="Иванов Иван Иванович" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Номер телефона</label>
+                <input type="text" name="phone" class="form-control phone-mask" placeholder="+7 (___) ___-__-__" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Дата рождения</label>
+                <input type="date" name="bday" class="form-control" max="2026-12-31" required>
+            </div>
+            <div style="display: flex; gap: 15px; margin-top: 30px;">
+                <button type="submit" class="btn btn-primary" style="flex: 2;">Создать карту клиента</button>
+                <button type="button" class="btn btn-outline" style="flex: 1;" onclick="closeModal('addClientModal')">Отмена</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="editClientModal" class="modal-overlay">
+    <div class="modal-window">
+        <div class="modal-header">
+            <h3>Редактирование профиля</h3>
+            <button class="modal-close" onclick="closeModal('editClientModal')"><i class="fas fa-times"></i></button>
+        </div>
+        <form id="editForm" action="" method="POST">
+            <div class="form-group">
+                <label class="form-label">Полное имя</label>
+                <input type="text" name="name" id="edit_name" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Телефон</label>
+                <input type="text" name="phone" id="edit_phone" class="form-control phone-mask" placeholder="+7 (___) ___-__-__" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Дата рождения</label>
+                <input type="date" name="bday" id="edit_bday" class="form-control" required>
+            </div>
+            <div style="display: flex; gap: 15px; margin-top: 30px;">
+                <button type="submit" class="btn btn-primary" style="flex: 2;">Сохранить изменения</button>
+                <button type="button" class="btn btn-outline" style="flex: 1;" onclick="closeModal('editClientModal')">Отмена</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="https://unpkg.com/imask"></script>
+<script>
+    // Инициализация масок для всех полей с классом phone-mask
+    let masks = [];
+    document.addEventListener('DOMContentLoaded', function() {
+        const phoneInputs = document.querySelectorAll('.phone-mask');
+        const maskOptions = { mask: '+{7} (000) 000-00-00' };
+
+        phoneInputs.forEach(input => {
+            masks.push(IMask(input, maskOptions));
+        });
+    });
+
+    function openEditModal(id, name, phone, bday) {
+        const form = document.getElementById('editForm');
+        form.action = '/client/edit/' + id;
+
+        document.getElementById('edit_name').value = name;
+
+        // Установка телефона в маску
+        const phoneInput = document.getElementById('edit_phone');
+        const mask = masks.find(m => m.el.input === phoneInput);
+        if (mask) {
+            mask.value = phone;
+        } else {
+            phoneInput.value = phone;
+        }
+
+        // Обработка даты
+        if(bday && bday !== 'None' && bday !== '') {
+            try {
+                const dateObj = new Date(bday);
+                // Смещение часового пояса, чтобы дата не "уехала" на день назад
+                dateObj.setMinutes(dateObj.getMinutes() - dateObj.getTimezoneOffset());
+                const formattedDate = dateObj.toISOString().split('T')[0];
+                document.getElementById('edit_bday').value = formattedDate;
+            } catch(e) {
+                console.error("Ошибка даты:", bday);
+            }
+        }
+
+        openModal('editClientModal');
+    }
+
+    function confirmClientDelete(id, name) {
+        if (confirm(`Удалить клиента ${name}?`)) {
+            window.location.href = '/client/delete/' + id;
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-title">
+        <h1>Журнал посещений</h1>
+        <p>История визитов клиентов в клуб</p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Время визита</th>
+                    <th>Клиент</th>
+                    <th>Тренировка</th>
+                    <th style="text-align: right;">Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td>
+                        <div style="font-weight: 600; color: var(--text-main);">
+                            {{ log.visit_time.strftime('%H:%M') }}
+                        </div>
+                        <div style="font-size: 11px; color: var(--text-muted);">
+                            {{ log.visit_time.strftime('%d.%m.%Y') }}
+                        </div>
+                    </td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-user-circle" style="color: #cbd5e1;"></i>
+                            <b>{{ log.client_name }}</b>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="badge" style="background: #f1f5f9; color: var(--primary); border: 1px solid #e2e8f0;">
+                            {{ log.activity_name }}
+                        </span>
+                    </td>
+                    <td style="text-align: right;">
+                        {% if current_role == 1 %}
+                        <button class="btn btn-outline"
+                                style="color: var(--danger); border-color: #fee2e2; padding: 6px 12px; font-size: 12px; transition: 0.2s;"
+                                onmouseover="this.style.background='#fef2f2'"
+                                onmouseout="this.style.background='transparent'"
+                                onclick="confirmLogDelete('{{ log.id_attendance }}', '{{ log.client_name }}')">
+                            <i class="fas fa-undo-alt"></i> Отменить
+                        </button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    function confirmLogDelete(id, name) {
+        if (confirm(`Удалить запись о визите клиента ${name}? \nЗанятие будет возвращено на абонемент.`)) {
+            window.location.href = '/attendance/delete/' + id;
+        }
+    }
+</script>
+{% endblock %}

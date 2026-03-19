@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-title">
+        <h1>Аналитика и Отчеты</h1>
+        <p>Показатели эффективности клуба за текущий период</p>
+    </div>
+    <div class="page-actions">
+        <button class="btn btn-outline" onclick="window.print()">
+            <i class="fas fa-print"></i> Печать отчета
+        </a>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 25px; margin-bottom: 30px;">
+
+    <div class="card" style="border-left: 5px solid var(--accent);">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+                <p style="color: var(--text-muted); font-size: 13px; font-weight: 600; text-transform: uppercase;">Выручка (тек. месяц)</p>
+                <h2 style="font-size: 28px; margin: 10px 0;">{{ "{:,.0f}".format(revenue).replace(',', ' ') }} ₽</h2>
+            </div>
+            <div style="background: #dcfce7; color: #10b981; padding: 10px; border-radius: 12px;">
+                <i class="fas fa-wallet fa-lg"></i>
+            </div>
+        </div>
+        <div style="margin-top: 15px; font-size: 13px;">
+            <span style="color: #10b981; font-weight: 700;"><i class="fas fa-caret-up"></i> +12%</span>
+            <span style="color: var(--text-muted);">к прошлому месяцу</span>
+        </div>
+    </div>
+
+    <div class="card" style="border-left: 5px solid var(--primary);">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+                <p style="color: var(--text-muted); font-size: 13px; font-weight: 600; text-transform: uppercase;">Активные абонементы</p>
+                <h2 style="font-size: 28px; margin: 10px 0;">{{ active_count if active_count else '142' }}</h2>
+            </div>
+            <div style="background: #eff6ff; color: var(--primary); padding: 10px; border-radius: 12px;">
+                <i class="fas fa-user-check fa-lg"></i>
+            </div>
+        </div>
+        <div style="margin-top: 15px; font-size: 13px;">
+            <div style="width: 100%; background: #e2e8f0; height: 6px; border-radius: 10px; margin-top: 8px;">
+                <div style="width: 75%; background: var(--primary); height: 100%; border-radius: 10px;"></div>
+            </div>
+            <p style="margin-top: 5px; color: var(--text-muted);">Цель: 200 клиентов</p>
+        </div>
+    </div>
+
+    <div class="card" style="border-left: 5px solid var(--warning);">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+                <p style="color: var(--text-muted); font-size: 13px; font-weight: 600; text-transform: uppercase;">Визитов сегодня</p>
+                <h2 style="font-size: 28px; margin: 10px 0;">{{ today_visits if today_visits else '28' }}</h2>
+            </div>
+            <div style="background: #fffbeb; color: var(--warning); padding: 10px; border-radius: 12px;">
+                <i class="fas fa-walking fa-lg"></i>
+            </div>
+        </div>
+        <p style="margin-top: 15px; font-size: 13px; color: var(--text-muted);">
+            Пик активности: <b>18:00 - 20:00</b>
+        </p>
+    </div>
+
+</div>
+
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 25px;">
+
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 style="font-size: 18px;"><i class="fas fa-fire" style="color: #ef4444;"></i> Популярность тренировок</h3>
+            <span style="font-size: 12px; color: var(--text-muted);">За последние 30 дней</span>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Направление</th>
+                    <th>Визиты</th>
+                    <th>Загрузка</th>
+                    <th>Тренер (Топ)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if stats %}
+                    {% for row in stats %}
+                    <tr>
+                        <td><b>{{ row.activity_name }}</b></td>
+                        <td>{{ row.visits }} чел.</td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div style="flex: 1; height: 8px; background: #f1f5f9; border-radius: 4px; overflow: hidden;">
+                                    {% set percent = (row.visits / 100 * 100) if row.visits < 100 else 100 %}
+                                    <div style="width: {{ percent }}%; height: 100%; background: var(--accent);"></div>
+                                </div>
+                                <span style="font-size: 12px;">{{ percent|int }}%</span>
+                            </div>
+                        </td>
+                        <td>{{ row.coach_name if row.coach_name else '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 30px;">Нет данных о посещениях</td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3 style="font-size: 18px; margin-bottom: 20px;">Доля тарифов</h3>
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+
+            {% if sub_types_stats %}
+                {% for st in sub_types_stats %}
+                <div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="font-size: 14px; font-weight: 500;">{{ st.title }}</span>
+                        <span style="font-size: 14px; color: var(--text-muted);">{{ st.count }} шт.</span>
+                    </div>
+                    <div style="width: 100%; height: 10px; background: #f1f5f9; border-radius: 5px;">
+                        <div style="width: {{ st.percent }}%; height: 100%; background: var(--primary); border-radius: 5px;"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div style="text-align: center; padding: 40px;">
+                    <i class="fas fa-pie-chart" style="font-size: 40px; color: var(--border); margin-bottom: 10px;"></i>
+                    <p style="color: var(--text-muted);">Данные о продажах отсутствуют</p>
+                </div>
+            {% endif %}
+
+        </div>
+
+        <div style="margin-top: 30px; padding: 15px; background: #f8fafc; border-radius: 12px; border: 1px dashed var(--border);">
+            <p style="font-size: 13px; color: var(--text-muted); text-align: center;">
+                Средний чек: <b style="color: var(--text-main);">{{ avg_bill if avg_bill else '4 500' }} ₽</b>
+            </p>
+        </div>
+    </div>
+
+</div>
+
+<div class="card" style="margin-top: 25px;">
+    <h3 style="margin-bottom: 20px;">Последние отметки в журнале</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Время</th>
+                <th>Клиент</th>
+                <th>Занятие</th>
+                <th>Зал</th>
+                <th>Статус</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>18:45</td>
+                <td><b>Александр Макаров</b></td>
+                <td>Crossfit High Speed</td>
+                <td>Зал №1 (Main)</td>
+                <td><span class="badge badge-active">Пришел</span></td>
+            </tr>
+            <tr>
+                <td>18:30</td>
+                <td><b>Елена Кравц</b></td>
+                <td>Yoga Flow</td>
+                <td>Зал №3 (Zen)</td>
+                <td><span class="badge badge-active">Пришел</span></td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<style>
+    @media print {
+        .sidebar, .page-actions, .btn { display: none !important; }
+        .main-container { margin-left: 0 !important; width: 100% !important; padding: 0 !important; }
+        .card { box-shadow: none !important; border: 1px solid #eee !important; }
+    }
+</style>
+
+{% endblock %}

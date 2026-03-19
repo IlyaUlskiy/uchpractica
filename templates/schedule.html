@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-title">
+        <h1>Расписание занятий</h1>
+        <p>Сегодня: <span id="currentDate" style="font-weight: 600; color: var(--primary);"></span></p>
+    </div>
+
+    {% if current_role == 1 %}
+    <div class="page-actions">
+        <button class="btn btn-primary" onclick="openModal('addLessonModal')">
+            <i class="fas fa-plus"></i> Добавить тренировку
+        </button>
+    </div>
+    {% endif %}
+</div>
+
+<div class="card" style="margin-bottom: 25px; padding: 15px;">
+    <form method="GET" action="/schedule" id="hallFilter" style="display: flex; gap: 15px; align-items: center;">
+        <span style="font-weight: 600; color: var(--text-muted); min-width: 120px;">Выбрать зал:</span>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <a href="/schedule" class="btn {{ 'btn-primary' if not request.args.get('hall') else 'btn-outline' }}" style="padding: 8px 16px;">
+                Все залы
+            </a>
+            {% for hall in halls %}
+            <a href="/schedule?hall={{ hall.id_hall }}"
+               class="btn {{ 'btn-primary' if request.args.get('hall') == hall.id_hall|string else 'btn-outline' }}"
+               style="padding: 8px 16px;">
+                {{ hall.hall_name }}
+            </a>
+            {% endfor %}
+        </div>
+    </form>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px;">
+
+    {% if lessons %}
+        {% for lesson in lessons %}
+        <div class="card lesson-card" style="position: relative; border-top: 4px solid var(--primary); transition: all 0.3s ease;">
+
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+                <div style="background: #f1f5f9; padding: 5px 12px; border-radius: 8px; font-weight: 700; font-size: 18px; color: var(--primary);">
+                    {{ lesson.start_time.strftime('%H:%M') if lesson.start_time else '18:00' }}
+                </div>
+
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <span class="badge badge-active" style="font-size: 10px; text-transform: uppercase;">Идет запись</span>
+
+                    {% if current_role == 1 %}
+                    <button class="btn btn-outline"
+                            style="color: var(--danger); border-color: transparent; padding: 4px 8px; background: #fef2f2; border-radius: 6px;"
+                            onclick="confirmLessonDelete('{{ lesson.id_lesson }}', '{{ lesson.activity_name }}')"
+                            title="Отменить занятие">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+
+            <h3 style="margin-bottom: 10px; font-size: 20px; color: var(--text-main);">{{ lesson.activity_name }}</h3>
+
+            <div style="display: flex; flex-direction: column; gap: 8px; color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-user-tie" style="width: 15px; color: var(--primary); opacity: 0.7;"></i>
+                    <span>Тренер: <b>{{ lesson.coach }}</b></span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-map-marker-alt" style="width: 15px; color: var(--primary); opacity: 0.7;"></i>
+                    <span>Зал: <b>{{ lesson.hall_name }}</b></span>
+                </div>
+            </div>
+
+            <div style="background: #f8fafc; padding: 15px; border-radius: 12px; border: 1px solid var(--border);">
+                <form action="/visit/mark" method="POST">
+                    <input type="hidden" name="lesson_id" value="{{ lesson.id_lesson }}">
+                    <label class="form-label" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted);">Быстрый Check-in:</label>
+                    <div style="display: flex; gap: 8px;">
+                        <select name="sub_id" class="form-control" style="margin: 0; flex: 1; font-size: 13px;" required>
+                            <option value="" disabled selected>Клиент...</option>
+                            {% for sub in active_subs %}
+                                <option value="{{ sub.id_subscription }}">
+                                    {{ sub.full_name }} ({{ 'Б/Л' if sub.remaining_visits >= 999 else sub.remaining_visits }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="btn btn-primary" style="padding: 0 15px;" title="Отметить визит">
+                            <i class="fas fa-check"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="card" style="grid-column: 1 / -1; text-align: center; padding: 80px 20px;">
+            <i class="fas fa-calendar-times" style="font-size: 60px; color: #e2e8f0; margin-bottom: 20px;"></i>
+            <h3 style="color: var(--text-main);">Сетка пуста</h3>
+            <p style="color: var(--text-muted);">На этот день или в этом зале занятий пока нет.</p>
+        </div>
+    {% endif %}
+
+</div>
+
+<div id="addLessonModal" class="modal-overlay">
+    <div class="modal-window" style="max-width: 500px;">
+        <div class="modal-header">
+            <h3>Новое занятие</h3>
+            <button class="modal-close" onclick="closeModal('addLessonModal')"><i class="fas fa-times"></i></button>
+        </div>
+        <form action="/schedule/add" method="POST">
+            <div class="form-group">
+                <label class="form-label">Направление</label>
+                <select name="activity_type_id" class="form-control" required>
+                    <option value="" disabled selected>Выберите тип тренировки...</option>
+                    <option value="1">Yoga Flow</option>
+                    <option value="2">Crossfit</option>
+                    <option value="3">Boxing</option>
+                    </select>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="form-group">
+                    <label class="form-label">Время начала</label>
+                    <input type="time" name="start_time" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Зал</label>
+                    <select name="hall_id" class="form-control" required>
+                        {% for hall in halls %}
+                        <option value="{{ hall.id_hall }}">{{ hall.hall_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Тренер</label>
+                <select name="staff_id" class="form-control" required>
+                    <option value="" disabled selected>Кто ведет занятие?</option>
+                    <option value="1">Иван Петров (Senior)</option>
+                    </select>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 25px;">
+                <button type="submit" class="btn btn-primary" style="flex: 2;">Опубликовать</button>
+                <button type="button" class="btn btn-outline" style="flex: 1;" onclick="closeModal('addLessonModal')">Отмена</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Текущая дата
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    document.getElementById('currentDate').innerText = new Date().toLocaleDateString('ru-RU', options);
+
+    // Удаление занятия
+    function confirmLessonDelete(id, name) {
+        if (confirm(`Внимание!\nВы собираетесь отменить тренировку "${name}".\n\nЭто удалит запись из расписания. Продолжить?`)) {
+            window.location.href = '/schedule/delete/' + id;
+        }
+    }
+
+    // Анимация карточек
+    document.querySelectorAll('.lesson-card').forEach(card => {
+        card.addEventListener('mouseenter', () => {
+            card.style.transform = 'translateY(-5px)';
+            card.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.1)';
+        });
+        card.addEventListener('mouseleave', () => {
+            card.style.transform = 'translateY(0)';
+            card.style.boxShadow = 'none';
+        });
+    });
+</script>
+{% endblock %}
